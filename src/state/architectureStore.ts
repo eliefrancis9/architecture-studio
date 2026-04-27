@@ -28,6 +28,8 @@ interface ArchitectureState {
   updateDecision: (decisionId: string, patch: Partial<ArchitectureDecision>) => void;
   moveComponent: (componentId: string, position: ArchitectureComponent["position"]) => void;
   addDependency: (fromComponentId: string, toComponentId: string) => void;
+  validateSelectedComponent: () => void;
+  resetDemoData: () => void;
 }
 
 const componentDefaults: Record<ComponentType, Pick<ArchitectureComponent, "name" | "role" | "exposure">> = {
@@ -41,6 +43,17 @@ const componentDefaults: Record<ComponentType, Pick<ArchitectureComponent, "name
 };
 
 const now = () => new Date().toISOString();
+const storageName = "architecture-studio-v1";
+const freshSampleArchitecture = () => structuredClone(sampleArchitecture);
+
+function validSelectedComponentId(architecture: Architecture, selectedComponentId?: string) {
+  if (!selectedComponentId) {
+    return undefined;
+  }
+
+  const scenario = resolveScenario(architecture, architecture.activeScenarioId);
+  return scenario.components.some((component) => component.id === selectedComponentId) ? selectedComponentId : undefined;
+}
 
 function updateActiveScenario(
   architecture: Architecture,
@@ -94,7 +107,7 @@ function upsertDecisionOverride(
 export const useArchitectureStore = create<ArchitectureState>()(
   persist(
     (set, get) => ({
-      architecture: sampleArchitecture,
+      architecture: freshSampleArchitecture(),
       selectedComponentId: "component-api",
       activeScenario: () => {
         const { architecture } = get();
@@ -105,10 +118,13 @@ export const useArchitectureStore = create<ArchitectureState>()(
         return get().activeScenario().components.find((component) => component.id === selectedComponentId);
       },
       setActiveScenario: (scenarioId) =>
-        set((state) => ({
-          architecture: { ...state.architecture, activeScenarioId: scenarioId },
-          selectedComponentId: undefined,
-        })),
+        set((state) => {
+          const architecture = { ...state.architecture, activeScenarioId: scenarioId };
+          return {
+            architecture,
+            selectedComponentId: validSelectedComponentId(architecture, state.selectedComponentId),
+          };
+        }),
       selectComponent: (componentId) => set({ selectedComponentId: componentId }),
       addComponent: (type, position) =>
         set((state) => {
@@ -286,13 +302,35 @@ export const useArchitectureStore = create<ArchitectureState>()(
             ),
           };
         }),
+      validateSelectedComponent: () =>
+        set((state) => ({
+          selectedComponentId: validSelectedComponentId(state.architecture, state.selectedComponentId),
+        })),
+      resetDemoData: () => {
+        localStorage.removeItem(storageName);
+        set({
+          architecture: freshSampleArchitecture(),
+          selectedComponentId: "component-api",
+        });
+      },
     }),
     {
-      name: "architecture-studio-v1",
+      name: storageName,
       partialize: (state) => ({
         architecture: state.architecture,
         selectedComponentId: state.selectedComponentId,
       }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<ArchitectureState> | undefined;
+        const architecture = persistedState?.architecture ?? freshSampleArchitecture();
+
+        return {
+          ...current,
+          ...persistedState,
+          architecture,
+          selectedComponentId: validSelectedComponentId(architecture, persistedState?.selectedComponentId),
+        };
+      },
     },
   ),
 );

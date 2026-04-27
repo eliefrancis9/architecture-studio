@@ -268,9 +268,12 @@ export function InspectorPanel() {
       ) : (
         <div className="emptyState">
           <Braces size={22} />
-          <strong>{scenario.components.length} components modeled</strong>
-          <span>{scenario.dependencies.length} dependencies captured</span>
-          <span>{scenario.decisions.length} decisions tracked</span>
+          <strong>No component selected</strong>
+          <span>Select a component on the canvas to edit its schema, dependencies, decisions, and tradeoffs.</span>
+          <small>
+            {scenario.components.length} components / {scenario.dependencies.length} dependencies /{" "}
+            {scenario.decisions.length} decisions
+          </small>
         </div>
       )}
 

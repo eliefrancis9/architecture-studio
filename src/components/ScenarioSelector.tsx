@@ -1,10 +1,11 @@
-import { Layers3 } from "lucide-react";
+import { Layers3, RotateCcw } from "lucide-react";
 import { scenarioSummaries } from "../domain/scenarioResolver";
 import { useArchitectureStore } from "../state/architectureStore";
 
 export function ScenarioSelector() {
   const architecture = useArchitectureStore((state) => state.architecture);
   const setActiveScenario = useArchitectureStore((state) => state.setActiveScenario);
+  const resetDemoData = useArchitectureStore((state) => state.resetDemoData);
   const scenarios = scenarioSummaries(architecture);
 
   return (
@@ -17,17 +18,23 @@ export function ScenarioSelector() {
         </div>
       </div>
 
-      <div className="scenarioControl" aria-label="Scenario selector">
-        <Layers3 size={16} />
-        {scenarios.map((scenario) => (
-          <button
-            key={scenario.id}
-            className={scenario.id === architecture.activeScenarioId ? "active" : ""}
-            onClick={() => setActiveScenario(scenario.id)}
-          >
-            {scenario.name}
-          </button>
-        ))}
+      <div className="topbarActions">
+        <div className="scenarioControl" aria-label="Scenario selector">
+          <Layers3 size={16} />
+          {scenarios.map((scenario) => (
+            <button
+              key={scenario.id}
+              className={scenario.id === architecture.activeScenarioId ? "active" : ""}
+              onClick={() => setActiveScenario(scenario.id)}
+            >
+              {scenario.name}
+            </button>
+          ))}
+        </div>
+        <button className="resetButton" onClick={resetDemoData} title="Reset demo data">
+          <RotateCcw size={15} />
+          Reset Demo Data
+        </button>
       </div>
     </header>
   );
