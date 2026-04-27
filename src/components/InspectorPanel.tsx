@@ -12,7 +12,7 @@ import type {
   Provider,
   TradeoffDimension,
 } from "../domain/architecture";
-import { evaluateScenario } from "../reasoning/signals";
+import { evaluateConstraints, evaluateScenario } from "../reasoning/signals";
 import { useArchitectureStore } from "../state/architectureStore";
 
 const providers: Provider[] = ["aws", "azure", "gcp", "onprem", "saas", "edge"];
@@ -109,9 +109,11 @@ function DecisionCard({
 
 function ConstraintCard({
   constraint,
+  suggestedActions,
   onUpdate,
 }: {
   constraint: Constraint;
+  suggestedActions: string[];
   onUpdate: (constraintId: string, patch: Partial<Constraint>) => void;
 }) {
   return (
@@ -164,6 +166,14 @@ function ConstraintCard({
           }}
         />
       </Field>
+      {suggestedActions.length > 0 && (
+        <div className="suggestedActions">
+          <strong>Suggested actions</strong>
+          {suggestedActions.map((action) => (
+            <small key={action}>{action}</small>
+          ))}
+        </div>
+      )}
     </article>
   );
 }
@@ -177,6 +187,10 @@ export function InspectorPanel() {
   const updateDecision = useArchitectureStore((state) => state.updateDecision);
   const addDependency = useArchitectureStore((state) => state.addDependency);
   const signals = evaluateScenario(scenario);
+  const constraintEvaluations = evaluateConstraints(scenario);
+  const constraintEvaluationById = new Map(
+    constraintEvaluations.map((evaluation) => [evaluation.constraint.id, evaluation]),
+  );
 
   const update = <K extends keyof ArchitectureComponent>(key: K, value: ArchitectureComponent[K]) => {
     if (component) {
@@ -385,7 +399,16 @@ export function InspectorPanel() {
           <p className="quiet">No constraints captured for this scenario.</p>
         ) : (
           scenario.constraints.map((constraint) => (
-            <ConstraintCard key={constraint.id} constraint={constraint} onUpdate={updateConstraint} />
+            <ConstraintCard
+              key={constraint.id}
+              constraint={constraint}
+              suggestedActions={
+                constraintEvaluationById.get(constraint.id)?.satisfied
+                  ? []
+                  : constraintEvaluationById.get(constraint.id)?.suggestedActions ?? []
+              }
+              onUpdate={updateConstraint}
+            />
           ))
         )}
       </section>

@@ -5,6 +5,7 @@ export interface ConstraintEvaluation {
   satisfied: boolean;
   actualValue: string | number;
   explanation: string;
+  suggestedActions: string[];
 }
 
 const availabilityRank: Record<ArchitectureComponent["availability"], number> = {
@@ -24,6 +25,10 @@ function categoryForConstraint(type: Constraint["type"]): RiskSignal["category"]
   return type;
 }
 
+function componentNames(components: ArchitectureComponent[]) {
+  return components.map((component) => component.name).join(", ");
+}
+
 export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintEvaluation[] {
   return scenario.constraints.map((constraint) => {
     if (constraint.type === "cost") {
@@ -35,6 +40,14 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
         actualValue,
         satisfied: Number.isFinite(targetValue) ? actualValue <= targetValue : true,
         explanation: `Modeled monthly cost is $${actualValue.toLocaleString()} against a target of $${targetValue.toLocaleString()}.`,
+        suggestedActions:
+          actualValue > targetValue
+            ? [
+                "Review the highest-cost components and reduce capacity assumptions where resilience requirements allow.",
+                "Switch eligible steady-state workloads from pay-as-you-go to reserved or committed pricing.",
+                "Create a cost-focused variant that removes non-critical redundancy before customer review.",
+              ]
+            : [],
       };
     }
 
@@ -50,6 +63,13 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
           violatingComponents.length === 0
             ? `All modeled components align to ${targetValue}.`
             : `${violatingComponents.length} components are outside or not explicitly aligned to ${targetValue}.`,
+        suggestedActions:
+          violatingComponents.length === 0
+            ? []
+            : [
+                `${componentNames(violatingComponents)} should move to ${targetValue} or document an approved exception.`,
+                "Update dependent network boundaries so component placement and traffic flow stay aligned.",
+              ],
       };
     }
 
@@ -70,6 +90,12 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
             violatingComponents.length === 0
               ? `Non-low criticality components meet ${targetText} availability.`
               : `${violatingComponents.length} non-low criticality components are below ${targetText} availability.`,
+          suggestedActions:
+            violatingComponents.length === 0
+              ? []
+              : violatingComponents.map(
+                  (component) => `${component.name} should move from ${component.availability} to ${targetText}.`,
+                ),
         };
       }
 
@@ -87,6 +113,15 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
           violatingComponents.length === 0
             ? `Recovery objectives meet the ${targetHours} hour target.`
             : `${violatingComponents.length} non-low criticality components exceed or omit the ${targetHours} hour RTO target.`,
+        suggestedActions:
+          violatingComponents.length === 0
+            ? []
+            : violatingComponents.map(
+                (component) =>
+                  `${component.name} should define an RTO at or below ${targetHours} hour${
+                    targetHours === 1 ? "" : "s"
+                  } and add monitoring/runbook coverage.`,
+              ),
       };
     }
 
@@ -103,6 +138,13 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
           hasPublicSurface && !hasSecurityLayer
             ? "Public exposure exists without an explicit security component."
             : "Security constraint is satisfied by the current exposure and control model.",
+        suggestedActions:
+          hasPublicSurface && !hasSecurityLayer
+            ? [
+                "Add a security layer component in front of public surfaces.",
+                "Move public components behind an internal exposure boundary if direct access is not required.",
+              ]
+            : [],
       };
     }
 
@@ -117,6 +159,12 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
       explanation: acceptedDecisionSatisfies
         ? "An accepted decision explicitly satisfies this constraint."
         : "No accepted decision currently evidences this constraint.",
+      suggestedActions: acceptedDecisionSatisfies
+        ? []
+        : [
+            `Link this ${constraint.type} constraint to a decision and mark the satisfying option as accepted.`,
+            "Capture an explicit exception if the constraint is intentionally deferred.",
+          ],
     };
   });
 }

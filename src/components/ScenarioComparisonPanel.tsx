@@ -1,6 +1,7 @@
 import { ArrowRightLeft, CircleDollarSign, GitCompareArrows, Signal } from "lucide-react";
 import type { RiskSignalCategory } from "../domain/architecture";
 import { compareBaseToActive } from "../domain/scenarioComparison";
+import { evaluateConstraints } from "../reasoning/signals";
 import { useArchitectureStore } from "../state/architectureStore";
 
 const categories: RiskSignalCategory[] = ["resilience", "security", "scalability", "operability", "cost", "compliance"];
@@ -38,6 +39,16 @@ export function ScenarioComparisonPanel() {
   const architecture = useArchitectureStore((state) => state.architecture);
   const comparison = compareBaseToActive(architecture);
   const impactSummary = describeImpact(comparison);
+  const suggestedActions = evaluateConstraints(comparison.active)
+    .filter((evaluation) => !evaluation.satisfied)
+    .flatMap((evaluation) =>
+      evaluation.suggestedActions.map((action) => ({
+        constraintId: evaluation.constraint.id,
+        type: evaluation.constraint.type,
+        action,
+      })),
+    )
+    .slice(0, 3);
 
   return (
     <section className="comparisonPanel panel">
@@ -132,6 +143,17 @@ export function ScenarioComparisonPanel() {
           ))
         )}
       </div>
+
+      {suggestedActions.length > 0 && (
+        <div className="comparisonGuidance">
+          <strong>Guidance</strong>
+          {suggestedActions.map((suggestion) => (
+            <small key={`${suggestion.constraintId}-${suggestion.action}`}>
+              {suggestion.type}: {suggestion.action}
+            </small>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

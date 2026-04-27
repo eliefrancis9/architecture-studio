@@ -366,6 +366,30 @@ p {
   background: #f8fafc;
 }
 
+.comparisonGuidance,
+.suggestedActions {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid #f7c66c;
+  border-radius: 8px;
+  background: #fffbeb;
+}
+
+.comparisonGuidance strong,
+.suggestedActions strong {
+  color: #92400e;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.comparisonGuidance small,
+.suggestedActions small {
+  color: #6f4e12;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .field {
   display: grid;
   gap: 6px;
