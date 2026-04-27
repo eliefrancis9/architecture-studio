@@ -1,11 +1,17 @@
-import type { ArchitectureComponent, ArchitectureScenario, Constraint, RiskSignal } from "../domain/architecture";
+import type {
+  ArchitectureComponent,
+  ArchitectureScenario,
+  Constraint,
+  RiskSignal,
+  SuggestedAction,
+} from "../domain/architecture";
 
 export interface ConstraintEvaluation {
   constraint: Constraint;
   satisfied: boolean;
   actualValue: string | number;
   explanation: string;
-  suggestedActions: string[];
+  suggestedActions: SuggestedAction[];
 }
 
 const availabilityRank: Record<ArchitectureComponent["availability"], number> = {
@@ -29,6 +35,12 @@ function componentNames(components: ArchitectureComponent[]) {
   return components.map((component) => component.name).join(", ");
 }
 
+function highestCostComponent(scenario: ArchitectureScenario) {
+  return [...scenario.components].sort(
+    (a, b) => b.costProfile.monthlyEstimate - a.costProfile.monthlyEstimate,
+  )[0];
+}
+
 export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintEvaluation[] {
   return scenario.constraints.map((constraint) => {
     if (constraint.type === "cost") {
@@ -43,9 +55,26 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
         suggestedActions:
           actualValue > targetValue
             ? [
-                "Review the highest-cost components and reduce capacity assumptions where resilience requirements allow.",
-                "Switch eligible steady-state workloads from pay-as-you-go to reserved or committed pricing.",
-                "Create a cost-focused variant that removes non-critical redundancy before customer review.",
+                highestCostComponent(scenario)
+                  ? {
+                      description: `${highestCostComponent(scenario).name} can move to reserved pricing and a lower modeled monthly estimate.`,
+                      targetComponentId: highestCostComponent(scenario).id,
+                      patch: {
+                        costProfile: {
+                          ...highestCostComponent(scenario).costProfile,
+                          model: "reserved",
+                          monthlyEstimate: Math.round(highestCostComponent(scenario).costProfile.monthlyEstimate * 0.8),
+                        },
+                      },
+                    }
+                  : {
+                      description:
+                        "Review the highest-cost components and reduce capacity assumptions where resilience requirements allow.",
+                    },
+                {
+                  description:
+                    "Create a cost-focused variant that removes non-critical redundancy before customer review.",
+                },
               ]
             : [],
       };
@@ -67,8 +96,16 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
           violatingComponents.length === 0
             ? []
             : [
-                `${componentNames(violatingComponents)} should move to ${targetValue} or document an approved exception.`,
-                "Update dependent network boundaries so component placement and traffic flow stay aligned.",
+                ...violatingComponents.map((component) => ({
+                  description: `${component.name} should move to ${targetValue} or document an approved exception.`,
+                  targetComponentId: component.id,
+                  patch: { region: targetValue },
+                })),
+                {
+                  description: `Update dependent network boundaries for ${componentNames(
+                    violatingComponents,
+                  )} so placement and traffic flow stay aligned.`,
+                },
               ],
       };
     }
@@ -93,9 +130,11 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
           suggestedActions:
             violatingComponents.length === 0
               ? []
-              : violatingComponents.map(
-                  (component) => `${component.name} should move from ${component.availability} to ${targetText}.`,
-                ),
+              : violatingComponents.map((component) => ({
+                  description: `${component.name} should move from ${component.availability} to ${targetText}.`,
+                  targetComponentId: component.id,
+                  patch: { availability: targetText as ArchitectureComponent["availability"] },
+                })),
         };
       }
 
@@ -116,12 +155,19 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
         suggestedActions:
           violatingComponents.length === 0
             ? []
-            : violatingComponents.map(
-                (component) =>
-                  `${component.name} should define an RTO at or below ${targetHours} hour${
-                    targetHours === 1 ? "" : "s"
-                  } and add monitoring/runbook coverage.`,
-              ),
+            : violatingComponents.map((component) => ({
+                description: `${component.name} should define an RTO at or below ${targetHours} hour${
+                  targetHours === 1 ? "" : "s"
+                } and add monitoring/runbook coverage.`,
+                targetComponentId: component.id,
+                patch: {
+                  operability: {
+                    ...component.operability,
+                    monitoring: component.operability.monitoring === "none" ? "basic" : component.operability.monitoring,
+                    recoveryObjectiveHours: targetHours,
+                  },
+                },
+              })),
       };
     }
 
@@ -141,13 +187,24 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
         suggestedActions:
           hasPublicSurface && !hasSecurityLayer
             ? [
-                "Add a security layer component in front of public surfaces.",
-                "Move public components behind an internal exposure boundary if direct access is not required.",
+                {
+                  description: "Add a security layer component in front of public surfaces.",
+                },
+                ...scenario.components
+                  .filter((component) => component.exposure === "public")
+                  .map((component) => ({
+                    description: `${component.name} can move behind an internal exposure boundary if direct access is not required.`,
+                    targetComponentId: component.id,
+                    patch: { exposure: "internal" as ArchitectureComponent["exposure"] },
+                  })),
               ]
             : [],
       };
     }
 
+    const satisfyingDecision = scenario.decisions.find((decision) =>
+      decision.satisfiesConstraintIds?.includes(constraint.id),
+    );
     const acceptedDecisionSatisfies = scenario.decisions.some(
       (decision) => decision.status === "accepted" && decision.satisfiesConstraintIds?.includes(constraint.id),
     );
@@ -162,8 +219,18 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
       suggestedActions: acceptedDecisionSatisfies
         ? []
         : [
-            `Link this ${constraint.type} constraint to a decision and mark the satisfying option as accepted.`,
-            "Capture an explicit exception if the constraint is intentionally deferred.",
+            satisfyingDecision
+              ? {
+                  description: `Accept ${satisfyingDecision.title} if it is the intended way to satisfy this ${constraint.type} constraint.`,
+                  targetDecisionId: satisfyingDecision.id,
+                  patch: { status: "accepted" },
+                }
+              : {
+                  description: `Link this ${constraint.type} constraint to a decision and mark the satisfying option as accepted.`,
+                },
+            {
+              description: "Capture an explicit exception if the constraint is intentionally deferred.",
+            },
           ],
     };
   });

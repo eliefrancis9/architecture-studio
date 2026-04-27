@@ -390,6 +390,24 @@ p {
   line-height: 1.4;
 }
 
+.suggestedActionRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestedActionRow button {
+  min-height: 26px;
+  border: 1px solid #d6a44f;
+  border-radius: 7px;
+  padding: 0 8px;
+  color: #7c4a03;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .field {
   display: grid;
   gap: 6px;

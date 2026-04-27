@@ -45,7 +45,7 @@ export function ScenarioComparisonPanel() {
       evaluation.suggestedActions.map((action) => ({
         constraintId: evaluation.constraint.id,
         type: evaluation.constraint.type,
-        action,
+        action: action.description,
       })),
     )
     .slice(0, 3);

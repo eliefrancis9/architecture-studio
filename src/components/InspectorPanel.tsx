@@ -1,4 +1,5 @@
 import { Braces, GitCompareArrows, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { useMemo } from "react";
 import type {
   ArchitectureComponent,
   ArchitectureDecision,
@@ -10,8 +11,10 @@ import type {
   DecisionStatus,
   Exposure,
   Provider,
+  SuggestedAction,
   TradeoffDimension,
 } from "../domain/architecture";
+import { resolveScenario } from "../domain/scenarioResolver";
 import { evaluateConstraints, evaluateScenario } from "../reasoning/signals";
 import { useArchitectureStore } from "../state/architectureStore";
 
@@ -110,10 +113,12 @@ function DecisionCard({
 function ConstraintCard({
   constraint,
   suggestedActions,
+  onApplySuggestion,
   onUpdate,
 }: {
   constraint: Constraint;
-  suggestedActions: string[];
+  suggestedActions: SuggestedAction[];
+  onApplySuggestion: (suggestion: SuggestedAction) => void;
   onUpdate: (constraintId: string, patch: Partial<Constraint>) => void;
 }) {
   return (
@@ -170,7 +175,12 @@ function ConstraintCard({
         <div className="suggestedActions">
           <strong>Suggested actions</strong>
           {suggestedActions.map((action) => (
-            <small key={action}>{action}</small>
+            <div key={action.description} className="suggestedActionRow">
+              <small>{action.description}</small>
+              {action.patch && (
+                <button onClick={() => onApplySuggestion(action)}>Apply</button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -179,17 +189,26 @@ function ConstraintCard({
 }
 
 export function InspectorPanel() {
-  const scenario = useArchitectureStore((state) => state.activeScenario());
-  const component = useArchitectureStore((state) => state.selectedComponent());
+  const architecture = useArchitectureStore((state) => state.architecture);
+  const selectedComponentId = useArchitectureStore((state) => state.selectedComponentId);
   const updateComponent = useArchitectureStore((state) => state.updateComponent);
   const addConstraint = useArchitectureStore((state) => state.addConstraint);
   const updateConstraint = useArchitectureStore((state) => state.updateConstraint);
   const updateDecision = useArchitectureStore((state) => state.updateDecision);
   const addDependency = useArchitectureStore((state) => state.addDependency);
-  const signals = evaluateScenario(scenario);
-  const constraintEvaluations = evaluateConstraints(scenario);
-  const constraintEvaluationById = new Map(
-    constraintEvaluations.map((evaluation) => [evaluation.constraint.id, evaluation]),
+  const scenario = useMemo(
+    () => resolveScenario(architecture, architecture.activeScenarioId),
+    [architecture],
+  );
+  const component = useMemo(
+    () => scenario.components.find((candidate) => candidate.id === selectedComponentId),
+    [scenario.components, selectedComponentId],
+  );
+  const signals = useMemo(() => evaluateScenario(scenario), [scenario]);
+  const constraintEvaluations = useMemo(() => evaluateConstraints(scenario), [scenario]);
+  const constraintEvaluationById = useMemo(
+    () => new Map(constraintEvaluations.map((evaluation) => [evaluation.constraint.id, evaluation])),
+    [constraintEvaluations],
   );
 
   const update = <K extends keyof ArchitectureComponent>(key: K, value: ArchitectureComponent[K]) => {
@@ -197,23 +216,48 @@ export function InspectorPanel() {
       updateComponent(component.id, { [key]: value });
     }
   };
+  const applySuggestion = (suggestion: SuggestedAction) => {
+    if (!suggestion.patch) {
+      return;
+    }
 
-  const visibleDecisions = component
-    ? scenario.decisions.filter((decision) => decision.linkedComponentIds.includes(component.id))
-    : scenario.decisions;
-  const visibleDecisionConstraintIds = new Set(
-    visibleDecisions.flatMap((decision) => [
-      ...(decision.satisfiesConstraintIds ?? []),
-      ...(decision.violatesConstraintIds ?? []),
-    ]),
+    if (suggestion.targetComponentId) {
+      updateComponent(suggestion.targetComponentId, suggestion.patch as Partial<ArchitectureComponent>);
+    }
+
+    if (suggestion.targetDecisionId) {
+      updateDecision(suggestion.targetDecisionId, suggestion.patch as Partial<ArchitectureDecision>);
+    }
+  };
+
+  const visibleDecisions = useMemo(
+    () =>
+      component
+        ? scenario.decisions.filter((decision) => decision.linkedComponentIds.includes(component.id))
+        : scenario.decisions,
+    [component, scenario.decisions],
   );
-  const componentSignals = component
-    ? signals.filter(
-        (signal) =>
-          signal.componentIds.includes(component.id) ||
-          signal.constraintIds?.some((constraintId) => visibleDecisionConstraintIds.has(constraintId)),
-      )
-    : signals.slice(0, 5);
+  const visibleDecisionConstraintIds = useMemo(
+    () =>
+      new Set(
+        visibleDecisions.flatMap((decision) => [
+          ...(decision.satisfiesConstraintIds ?? []),
+          ...(decision.violatesConstraintIds ?? []),
+        ]),
+      ),
+    [visibleDecisions],
+  );
+  const componentSignals = useMemo(
+    () =>
+      component
+        ? signals.filter(
+            (signal) =>
+              signal.componentIds.includes(component.id) ||
+              signal.constraintIds?.some((constraintId) => visibleDecisionConstraintIds.has(constraintId)),
+          )
+        : signals.slice(0, 5),
+    [component, signals, visibleDecisionConstraintIds],
+  );
 
   return (
     <aside className="inspector panel">
@@ -407,6 +451,7 @@ export function InspectorPanel() {
                   ? []
                   : constraintEvaluationById.get(constraint.id)?.suggestedActions ?? []
               }
+              onApplySuggestion={applySuggestion}
               onUpdate={updateConstraint}
             />
           ))

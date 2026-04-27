@@ -119,6 +119,13 @@ export interface ArchitectureDecision {
   violatesConstraintIds?: string[];
 }
 
+export interface SuggestedAction {
+  description: string;
+  targetComponentId?: string;
+  targetDecisionId?: string;
+  patch?: Partial<ArchitectureComponent> | Partial<ArchitectureDecision>;
+}
+
 export interface ArchitectureScenario {
   id: string;
   name: string;

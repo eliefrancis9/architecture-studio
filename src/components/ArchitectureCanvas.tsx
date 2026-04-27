@@ -1,7 +1,8 @@
 import { CircleDollarSign, ShieldAlert } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Arrow, Group, Layer, Rect, Stage, Text } from "react-konva";
 import type { ComponentType } from "../domain/architecture";
+import { resolveScenario } from "../domain/scenarioResolver";
 import { evaluateScenario } from "../reasoning/signals";
 import { useArchitectureStore } from "../state/architectureStore";
 
@@ -21,15 +22,25 @@ const cardHeight = 84;
 export function ArchitectureCanvas() {
   const canvasRef = useRef<HTMLElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 900, height: 620 });
-  const scenario = useArchitectureStore((state) => state.activeScenario());
+  const architecture = useArchitectureStore((state) => state.architecture);
   const selectedComponentId = useArchitectureStore((state) => state.selectedComponentId);
   const selectComponent = useArchitectureStore((state) => state.selectComponent);
   const addComponent = useArchitectureStore((state) => state.addComponent);
   const moveComponent = useArchitectureStore((state) => state.moveComponent);
-  const signals = evaluateScenario(scenario);
-  const totalCost = scenario.components.reduce((sum, component) => sum + component.costProfile.monthlyEstimate, 0);
+  const scenario = useMemo(
+    () => resolveScenario(architecture, architecture.activeScenarioId),
+    [architecture],
+  );
+  const signals = useMemo(() => evaluateScenario(scenario), [scenario]);
+  const totalCost = useMemo(
+    () => scenario.components.reduce((sum, component) => sum + component.costProfile.monthlyEstimate, 0),
+    [scenario.components],
+  );
 
-  const componentById = new Map(scenario.components.map((component) => [component.id, component]));
+  const componentById = useMemo(
+    () => new Map(scenario.components.map((component) => [component.id, component])),
+    [scenario.components],
+  );
 
   useEffect(() => {
     const element = canvasRef.current;
