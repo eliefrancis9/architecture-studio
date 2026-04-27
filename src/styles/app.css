@@ -1,0 +1,464 @@
+:root {
+  color: #172033;
+  background: #eef2f6;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1120px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.appShell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 72px 1fr;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 249, 252, 0.5)),
+    #eef2f6;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid #dce3ec;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandMark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #172033;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.brand h1,
+.panel h2,
+.canvasToolbar h2 {
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.brand p,
+.panelHeader p,
+.canvasToolbar p {
+  color: #667085;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.scenarioControl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.scenarioControl svg {
+  margin: 0 6px;
+  color: #667085;
+}
+
+.scenarioControl button {
+  min-width: 84px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #526071;
+  background: transparent;
+}
+
+.scenarioControl button.active {
+  color: #172033;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(620px, 1fr) 360px;
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+}
+
+.panel {
+  min-height: 0;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #e6ebf2;
+}
+
+.paletteList,
+.formStack {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.paletteItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: left;
+  color: #172033;
+  background: #ffffff;
+}
+
+.paletteItem:hover {
+  border-color: #b7c5d8;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.paletteItem span {
+  display: grid;
+  gap: 2px;
+}
+
+.paletteItem strong {
+  font-size: 13px;
+}
+
+.paletteItem small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.canvasShell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #d1d9e6;
+  border-radius: 8px;
+  background:
+    linear-gradient(#e2e8f0 1px, transparent 1px),
+    linear-gradient(90deg, #e2e8f0 1px, transparent 1px),
+    #f8fafc;
+  background-size: 28px 28px;
+}
+
+.canvasToolbar {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid rgba(209, 217, 230, 0.86);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(14px);
+}
+
+.metrics {
+  display: flex;
+  gap: 8px;
+}
+
+.metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #dce3ec;
+  border-radius: 6px;
+  color: #526071;
+  background: #ffffff;
+  font-size: 12px;
+}
+
+.stage {
+  margin-top: 54px;
+}
+
+.inspector {
+  overflow: auto;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid #d4dce8;
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: #172033;
+  background: #ffffff;
+  outline: none;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: #3574d4;
+  box-shadow: 0 0 0 3px rgba(53, 116, 212, 0.14);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.emptyState {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  margin: 12px;
+  padding: 28px 14px;
+  border: 1px dashed #c9d3e1;
+  border-radius: 8px;
+  color: #667085;
+  text-align: center;
+}
+
+.emptyState strong {
+  color: #172033;
+}
+
+.decisions,
+.signals,
+.jsonPreview {
+  display: grid;
+  gap: 10px;
+  padding: 14px 12px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle h3 {
+  font-size: 13px;
+}
+
+.signal {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.signal div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.signal strong {
+  font-size: 12px;
+}
+
+.signal span {
+  color: #667085;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.signal p {
+  color: #445166;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.signal small {
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.signal.warning {
+  border-color: #f7c66c;
+  background: #fffbeb;
+}
+
+.signal.attention {
+  border-color: #f5a29b;
+  background: #fff1f0;
+}
+
+.decisionCard {
+  display: grid;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.decisionHeader,
+.selectedOption {
+  display: grid;
+  gap: 4px;
+}
+
+.decisionHeader {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.decisionHeader strong,
+.selectedOption strong {
+  font-size: 12px;
+}
+
+.decisionHeader span {
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: #445166;
+  background: #eef2f6;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.decisionCard p,
+.selectedOption span {
+  color: #526071;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tradeoffGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tradeoff {
+  display: grid;
+  gap: 5px;
+  min-height: 112px;
+  padding: 9px;
+  border: 1px solid #e0e7ef;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.tradeoff span {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tradeoff strong {
+  color: #172033;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.tradeoff small {
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.tradeoff.improves {
+  border-color: #b7dfc5;
+  background: #f0fdf4;
+}
+
+.tradeoff.worsens {
+  border-color: #f3c4bd;
+  background: #fff5f3;
+}
+
+.quiet {
+  color: #667085;
+  font-size: 12px;
+}
+
+.jsonPreview pre {
+  max-height: 300px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  color: #dbeafe;
+  background: #111827;
+  font-size: 11px;
+  line-height: 1.5;
+}
