@@ -1,4 +1,5 @@
 import { Layers3, RotateCcw } from "lucide-react";
+import { ExportSummaryPanel } from "./ExportSummaryPanel";
 import { scenarioSummaries } from "../domain/scenarioResolver";
 import { useArchitectureStore } from "../state/architectureStore";
 
@@ -35,6 +36,7 @@ export function ScenarioSelector() {
           <RotateCcw size={15} />
           Reset Demo Data
         </button>
+        <ExportSummaryPanel />
       </div>
     </header>
   );

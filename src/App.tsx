@@ -1,7 +1,6 @@
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ComponentPalette } from "./components/ComponentPalette";
-import { ExportSummaryPanel } from "./components/ExportSummaryPanel";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { ScenarioComparisonPanel } from "./components/ScenarioComparisonPanel";
 import { ScenarioSelector } from "./components/ScenarioSelector";
@@ -16,7 +15,6 @@ export function App() {
           <ComponentPalette />
           <div className="centerColumn">
             <ScenarioComparisonPanel />
-            <ExportSummaryPanel />
             <ArchitectureCanvas />
           </div>
           <InspectorPanel />

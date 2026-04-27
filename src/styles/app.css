@@ -185,6 +185,21 @@ p {
   color: #172033;
 }
 
+.exportButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  padding: 0 11px;
+  color: #445166;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(520px, 1fr) minmax(320px, 360px);
@@ -197,7 +212,7 @@ p {
 
 .centerColumn {
   display: grid;
-  grid-template-rows: auto auto minmax(420px, 1fr);
+  grid-template-rows: auto minmax(420px, 1fr);
   gap: 16px;
   min-width: 0;
   min-height: 0;
@@ -323,17 +338,42 @@ p {
   padding: 12px;
 }
 
-.exportPanel {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-}
-
 .exportHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(4px);
+}
+
+.exportModal {
+  display: grid;
+  gap: 14px;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 16px;
+}
+
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dce3ec;
+  border-radius: 7px;
+  color: #445166;
+  background: #ffffff;
 }
 
 .exportActions {
@@ -394,6 +434,41 @@ p {
   color: #526071;
   background: #f8fafc;
   font-size: 11px;
+}
+
+.summarySections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.summarySections article {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.summarySections h3 {
+  font-size: 12px;
+}
+
+.summarySections p {
+  display: grid;
+  gap: 3px;
+}
+
+.summarySections p strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.summarySections p span {
+  color: #526071;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .comparisonHeader {
@@ -852,6 +927,10 @@ p {
   }
 
   .centerColumn {
-    grid-template-rows: auto auto 560px;
+    grid-template-rows: auto 560px;
+  }
+
+  .summarySections {
+    grid-template-columns: 1fr;
   }
 }
