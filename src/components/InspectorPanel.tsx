@@ -4,6 +4,7 @@ import type {
   ArchitectureDecision,
   AvailabilityPattern,
   Criticality,
+  DecisionStatus,
   Exposure,
   Provider,
   TradeoffDimension,
@@ -15,6 +16,7 @@ const providers: Provider[] = ["aws", "azure", "gcp", "onprem", "saas", "edge"];
 const availabilityOptions: AvailabilityPattern[] = ["single", "multi-zone", "multi-region"];
 const exposureOptions: Exposure[] = ["private", "internal", "public"];
 const criticalityOptions: Criticality[] = ["low", "medium", "high", "mission-critical"];
+const decisionStatuses: DecisionStatus[] = ["proposed", "accepted", "superseded"];
 
 const formatTradeoff = (dimension: TradeoffDimension) => {
   const prefix = dimension.delta > 0 ? "+" : "";
@@ -36,7 +38,13 @@ function Field({
   );
 }
 
-function DecisionCard({ decision }: { decision: ArchitectureDecision }) {
+function DecisionCard({
+  decision,
+  onUpdate,
+}: {
+  decision: ArchitectureDecision;
+  onUpdate: (decisionId: string, patch: Partial<ArchitectureDecision>) => void;
+}) {
   const selectedOption =
     decision.options.find((option) => option.id === decision.selectedOptionId) ?? decision.options[0];
 
@@ -47,6 +55,32 @@ function DecisionCard({ decision }: { decision: ArchitectureDecision }) {
         <span>{decision.status}</span>
       </div>
       <p>{decision.context}</p>
+      <div className="decisionControls">
+        <Field label="Option">
+          <select
+            value={decision.selectedOptionId}
+            onChange={(event) => onUpdate(decision.id, { selectedOptionId: event.target.value })}
+          >
+            {decision.options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.title}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Status">
+          <select
+            value={decision.status}
+            onChange={(event) => onUpdate(decision.id, { status: event.target.value as DecisionStatus })}
+          >
+            {decisionStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
       <div className="selectedOption">
         <strong>{selectedOption.title}</strong>
         <span>{selectedOption.description}</span>
@@ -68,6 +102,7 @@ export function InspectorPanel() {
   const scenario = useArchitectureStore((state) => state.activeScenario());
   const component = useArchitectureStore((state) => state.selectedComponent());
   const updateComponent = useArchitectureStore((state) => state.updateComponent);
+  const updateDecision = useArchitectureStore((state) => state.updateDecision);
   const addDependency = useArchitectureStore((state) => state.addDependency);
   const signals = evaluateScenario(scenario);
 
@@ -247,7 +282,9 @@ export function InspectorPanel() {
         {visibleDecisions.length === 0 ? (
           <p className="quiet">No decisions linked to this selection.</p>
         ) : (
-          visibleDecisions.map((decision) => <DecisionCard key={decision.id} decision={decision} />)
+          visibleDecisions.map((decision) => (
+            <DecisionCard key={decision.id} decision={decision} onUpdate={updateDecision} />
+          ))
         )}
       </section>
 

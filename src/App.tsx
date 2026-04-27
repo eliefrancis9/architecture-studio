@@ -1,6 +1,7 @@
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
 import { ComponentPalette } from "./components/ComponentPalette";
 import { InspectorPanel } from "./components/InspectorPanel";
+import { ScenarioComparisonPanel } from "./components/ScenarioComparisonPanel";
 import { ScenarioSelector } from "./components/ScenarioSelector";
 import "./styles/app.css";
 
@@ -10,7 +11,10 @@ export function App() {
       <ScenarioSelector />
       <div className="workspace">
         <ComponentPalette />
-        <ArchitectureCanvas />
+        <div className="centerColumn">
+          <ScenarioComparisonPanel />
+          <ArchitectureCanvas />
+        </div>
         <InspectorPanel />
       </div>
     </div>

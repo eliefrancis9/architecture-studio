@@ -1,4 +1,5 @@
 import { CircleDollarSign, ShieldAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Arrow, Group, Layer, Rect, Stage, Text } from "react-konva";
 import type { ComponentType } from "../domain/architecture";
 import { evaluateScenario } from "../reasoning/signals";
@@ -18,6 +19,8 @@ const cardWidth = 180;
 const cardHeight = 84;
 
 export function ArchitectureCanvas() {
+  const canvasRef = useRef<HTMLElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 900, height: 620 });
   const scenario = useArchitectureStore((state) => state.activeScenario());
   const selectedComponentId = useArchitectureStore((state) => state.selectedComponentId);
   const selectComponent = useArchitectureStore((state) => state.selectComponent);
@@ -28,8 +31,25 @@ export function ArchitectureCanvas() {
 
   const componentById = new Map(scenario.components.map((component) => [component.id, component]));
 
+  useEffect(() => {
+    const element = canvasRef.current;
+    if (!element) return;
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setCanvasSize({
+        width: Math.max(480, Math.floor(width)),
+        height: Math.max(460, Math.floor(height)),
+      });
+    });
+
+    resizeObserver.observe(element);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   return (
     <main
+      ref={canvasRef}
       className="canvasShell"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
@@ -59,7 +79,12 @@ export function ArchitectureCanvas() {
         </div>
       </div>
 
-      <Stage width={1200} height={760} className="stage" onMouseDown={() => selectComponent(undefined)}>
+      <Stage
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="stage"
+        onMouseDown={() => selectComponent(undefined)}
+      >
         <Layer>
           {scenario.networks.map((network, index) => (
             <Group key={network.id} x={96 + index * 40} y={96 + index * 34}>

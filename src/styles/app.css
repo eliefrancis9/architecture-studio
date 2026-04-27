@@ -14,7 +14,6 @@
 
 body {
   margin: 0;
-  min-width: 1120px;
 }
 
 button,
@@ -120,9 +119,19 @@ p {
 
 .workspace {
   display: grid;
-  grid-template-columns: 260px minmax(620px, 1fr) 360px;
+  grid-template-columns: minmax(220px, 260px) minmax(520px, 1fr) minmax(320px, 360px);
   gap: 16px;
   padding: 16px;
+  min-height: 0;
+  height: calc(100vh - 72px);
+  overflow: hidden;
+}
+
+.centerColumn {
+  display: grid;
+  grid-template-rows: auto minmax(420px, 1fr);
+  gap: 16px;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -184,6 +193,7 @@ p {
 .canvasShell {
   position: relative;
   overflow: hidden;
+  min-height: 420px;
   border: 1px solid #d1d9e6;
   border-radius: 8px;
   background:
@@ -228,11 +238,99 @@ p {
 }
 
 .stage {
-  margin-top: 54px;
+  display: block;
 }
 
 .inspector {
   overflow: auto;
+}
+
+.palette {
+  overflow: auto;
+}
+
+.comparisonPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.comparisonHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comparisonHeader span {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #445166;
+  background: #eef2f6;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comparisonMetric,
+.comparisonList {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 94px;
+  padding: 10px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.comparisonMetric > span,
+.comparisonList > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.comparisonMetric strong {
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.comparisonMetric small,
+.comparisonList small,
+.tradeoffDeltaRow small {
+  color: #526071;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.signalMatrix div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+
+.tradeoffDeltaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tradeoffDeltaRow small {
+  padding: 5px 8px;
+  border: 1px solid #e0e7ef;
+  border-radius: 7px;
+  background: #f8fafc;
 }
 
 .field {
@@ -369,7 +467,8 @@ p {
 }
 
 .decisionHeader,
-.selectedOption {
+.selectedOption,
+.decisionControls {
   display: grid;
   gap: 4px;
 }
@@ -392,6 +491,11 @@ p {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.decisionControls {
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
 }
 
 .decisionCard p,
@@ -461,4 +565,39 @@ p {
   background: #111827;
   font-size: 11px;
   line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: 220px minmax(460px, 1fr) 320px;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .comparisonGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .appShell {
+    grid-template-rows: auto 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .workspace {
+    height: auto;
+    overflow: visible;
+    grid-template-columns: 1fr;
+  }
+
+  .centerColumn {
+    grid-template-rows: auto 560px;
+  }
 }
