@@ -1,8 +1,145 @@
-import type { ArchitectureScenario, RiskSignal } from "../domain/architecture";
+import type { ArchitectureComponent, ArchitectureScenario, Constraint, RiskSignal } from "../domain/architecture";
+
+export interface ConstraintEvaluation {
+  constraint: Constraint;
+  satisfied: boolean;
+  actualValue: string | number;
+  explanation: string;
+}
+
+const availabilityRank: Record<ArchitectureComponent["availability"], number> = {
+  single: 1,
+  "multi-zone": 2,
+  "multi-region": 3,
+};
+
+function totalMonthlyCost(scenario: ArchitectureScenario) {
+  return scenario.components.reduce((sum, component) => sum + component.costProfile.monthlyEstimate, 0);
+}
+
+function categoryForConstraint(type: Constraint["type"]): RiskSignal["category"] {
+  if (type === "availability") return "resilience";
+  if (type === "latency") return "operability";
+  if (type === "region") return "compliance";
+  return type;
+}
+
+export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintEvaluation[] {
+  return scenario.constraints.map((constraint) => {
+    if (constraint.type === "cost") {
+      const actualValue = totalMonthlyCost(scenario);
+      const targetValue = Number(constraint.targetValue);
+
+      return {
+        constraint,
+        actualValue,
+        satisfied: Number.isFinite(targetValue) ? actualValue <= targetValue : true,
+        explanation: `Modeled monthly cost is $${actualValue.toLocaleString()} against a target of $${targetValue.toLocaleString()}.`,
+      };
+    }
+
+    if (constraint.type === "region") {
+      const targetValue = String(constraint.targetValue);
+      const violatingComponents = scenario.components.filter((component) => !component.region.includes(targetValue));
+
+      return {
+        constraint,
+        actualValue: violatingComponents.length === 0 ? targetValue : `${violatingComponents.length} out-of-region components`,
+        satisfied: violatingComponents.length === 0,
+        explanation:
+          violatingComponents.length === 0
+            ? `All modeled components align to ${targetValue}.`
+            : `${violatingComponents.length} components are outside or not explicitly aligned to ${targetValue}.`,
+      };
+    }
+
+    if (constraint.type === "availability") {
+      const targetText = String(constraint.targetValue);
+      const targetRank = availabilityRank[targetText as ArchitectureComponent["availability"]];
+
+      if (targetRank) {
+        const violatingComponents = scenario.components.filter(
+          (component) => component.criticality !== "low" && availabilityRank[component.availability] < targetRank,
+        );
+
+        return {
+          constraint,
+          actualValue: violatingComponents.length === 0 ? targetText : `${violatingComponents.length} below target`,
+          satisfied: violatingComponents.length === 0,
+          explanation:
+            violatingComponents.length === 0
+              ? `Non-low criticality components meet ${targetText} availability.`
+              : `${violatingComponents.length} non-low criticality components are below ${targetText} availability.`,
+        };
+      }
+
+      const targetHours = Number(constraint.targetValue);
+      const violatingComponents = scenario.components.filter((component) => {
+        const rto = component.operability.recoveryObjectiveHours;
+        return component.criticality !== "low" && (rto === undefined || rto > targetHours);
+      });
+
+      return {
+        constraint,
+        actualValue: violatingComponents.length === 0 ? targetHours : `${violatingComponents.length} RTO gaps`,
+        satisfied: Number.isFinite(targetHours) ? violatingComponents.length === 0 : true,
+        explanation:
+          violatingComponents.length === 0
+            ? `Recovery objectives meet the ${targetHours} hour target.`
+            : `${violatingComponents.length} non-low criticality components exceed or omit the ${targetHours} hour RTO target.`,
+      };
+    }
+
+    if (constraint.type === "security") {
+      const requiresSecurityLayer = String(constraint.targetValue).toLowerCase().includes("security");
+      const hasPublicSurface = scenario.components.some((component) => component.exposure === "public");
+      const hasSecurityLayer = scenario.components.some((component) => component.type === "security");
+
+      return {
+        constraint,
+        actualValue: hasSecurityLayer ? "security layer modeled" : "no security layer",
+        satisfied: !requiresSecurityLayer || !hasPublicSurface || hasSecurityLayer,
+        explanation:
+          hasPublicSurface && !hasSecurityLayer
+            ? "Public exposure exists without an explicit security component."
+            : "Security constraint is satisfied by the current exposure and control model.",
+      };
+    }
+
+    const acceptedDecisionSatisfies = scenario.decisions.some(
+      (decision) => decision.status === "accepted" && decision.satisfiesConstraintIds?.includes(constraint.id),
+    );
+
+    return {
+      constraint,
+      actualValue: acceptedDecisionSatisfies ? "accepted decision coverage" : "not evidenced",
+      satisfied: acceptedDecisionSatisfies,
+      explanation: acceptedDecisionSatisfies
+        ? "An accepted decision explicitly satisfies this constraint."
+        : "No accepted decision currently evidences this constraint.",
+    };
+  });
+}
 
 export function evaluateScenario(scenario: ArchitectureScenario): RiskSignal[] {
   const signals: RiskSignal[] = [...scenario.risks];
   const securityComponents = scenario.components.filter((component) => component.type === "security");
+
+  evaluateConstraints(scenario)
+    .filter((evaluation) => !evaluation.satisfied)
+    .forEach((evaluation) => {
+      signals.push({
+        id: `constraint-${evaluation.constraint.id}`,
+        scenarioId: scenario.id,
+        category: categoryForConstraint(evaluation.constraint.type),
+        severity: evaluation.constraint.priority === "high" ? "warning" : "attention",
+        title: `${evaluation.constraint.type} constraint is not satisfied`,
+        explanation: evaluation.explanation,
+        tradeoff: evaluation.constraint.description,
+        componentIds: [],
+        constraintIds: [evaluation.constraint.id],
+      });
+    });
 
   scenario.components.forEach((component) => {
     if (component.criticality === "mission-critical" && component.availability === "single") {

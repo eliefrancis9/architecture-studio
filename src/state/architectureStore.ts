@@ -6,6 +6,7 @@ import type {
   ArchitectureDecision,
   ArchitectureScenario,
   ComponentType,
+  Constraint,
   Dependency,
   ScenarioOverrides,
 } from "../domain/architecture";
@@ -25,6 +26,8 @@ interface ArchitectureState {
   selectComponent: (componentId?: string) => void;
   addComponent: (type: ComponentType, position: ArchitectureComponent["position"]) => void;
   updateComponent: (componentId: string, patch: ComponentPatch) => void;
+  addConstraint: () => void;
+  updateConstraint: (constraintId: string, patch: Partial<Constraint>) => void;
   updateDecision: (decisionId: string, patch: Partial<ArchitectureDecision>) => void;
   moveComponent: (componentId: string, position: ArchitectureComponent["position"]) => void;
   addDependency: (fromComponentId: string, toComponentId: string) => void;
@@ -45,6 +48,45 @@ const componentDefaults: Record<ComponentType, Pick<ArchitectureComponent, "name
 const now = () => new Date().toISOString();
 const storageName = "architecture-studio-v1";
 const freshSampleArchitecture = () => structuredClone(sampleArchitecture);
+
+function normalizeArchitecture(architecture?: Partial<Architecture>): Architecture {
+  const sample = freshSampleArchitecture();
+  if (!architecture?.baseScenario) {
+    return sample;
+  }
+
+  return {
+    ...sample,
+    ...architecture,
+    constraints: architecture.constraints ?? sample.constraints,
+    baseScenario: {
+      ...sample.baseScenario,
+      ...architecture.baseScenario,
+      constraints: architecture.baseScenario.constraints?.map((constraint) => {
+        if ("type" in constraint && "targetValue" in constraint) {
+          return constraint as Constraint;
+        }
+
+        const legacy = constraint as unknown as {
+          id: string;
+          category?: string;
+          label?: string;
+          description?: string;
+          priority?: Constraint["priority"];
+        };
+
+        return {
+          id: legacy.id,
+          type: legacy.category === "resilience" ? "availability" : "security",
+          description: legacy.description ?? legacy.label ?? "Migrated constraint",
+          targetValue: legacy.category === "resilience" ? "multi-zone" : "explicit-security-layer",
+          priority: legacy.priority ?? "medium",
+        };
+      }) ?? sample.baseScenario.constraints,
+    },
+    variants: architecture.variants ?? sample.variants,
+  };
+}
 
 function validSelectedComponentId(architecture: Architecture, selectedComponentId?: string) {
   if (!selectedComponentId) {
@@ -102,6 +144,15 @@ function upsertDecisionOverride(
     ...(overrides ?? {}),
     [decision.id]: decision,
   };
+}
+
+function upsertConstraint(constraints: Constraint[] | undefined, updatedConstraint: Constraint) {
+  const existing = constraints ?? [];
+  const hasConstraint = existing.some((constraint) => constraint.id === updatedConstraint.id);
+
+  return hasConstraint
+    ? existing.map((constraint) => (constraint.id === updatedConstraint.id ? updatedConstraint : constraint))
+    : [...existing, updatedConstraint];
 }
 
 export const useArchitectureStore = create<ArchitectureState>()(
@@ -214,6 +265,72 @@ export const useArchitectureStore = create<ArchitectureState>()(
             },
           ),
         })),
+      addConstraint: () =>
+        set((state) => {
+          const constraint: Constraint = {
+            id: `constraint-${crypto.randomUUID()}`,
+            type: "cost",
+            description: "New architectural constraint",
+            targetValue: 10000,
+            priority: "medium",
+          };
+
+          return {
+            architecture: updateActiveScenario(
+              state.architecture,
+              (scenario) => ({
+                ...scenario,
+                constraints: [...scenario.constraints, constraint],
+              }),
+              (overrides) => ({
+                ...overrides,
+                constraints: upsertConstraint(overrides.constraints, constraint),
+              }),
+            ),
+          };
+        }),
+      updateConstraint: (constraintId, patch) =>
+        set((state) => {
+          const isBaseActive = state.architecture.activeScenarioId === state.architecture.baseScenario.id;
+          const architectureConstraint = state.architecture.constraints.find(
+            (constraint) => constraint.id === constraintId,
+          );
+
+          if (isBaseActive && architectureConstraint) {
+            return {
+              architecture: {
+                ...state.architecture,
+                updatedAt: now(),
+                constraints: state.architecture.constraints.map((constraint) =>
+                  constraint.id === constraintId ? { ...constraint, ...patch } : constraint,
+                ),
+              },
+            };
+          }
+
+          return {
+            architecture: updateActiveScenario(
+              state.architecture,
+              (scenario) => ({
+                ...scenario,
+                constraints: scenario.constraints.map((constraint) =>
+                  constraint.id === constraintId ? { ...constraint, ...patch } : constraint,
+                ),
+              }),
+              (overrides, resolved) => {
+                const constraint = resolved.constraints.find((candidate) => candidate.id === constraintId);
+                if (!constraint) {
+                  return overrides;
+                }
+
+                return {
+                  ...overrides,
+                  constraints: upsertConstraint(overrides.constraints, { ...constraint, ...patch }),
+                };
+              },
+            ),
+          };
+        }),
       updateDecision: (decisionId, patch) =>
         set((state) => ({
           architecture: updateActiveScenario(
@@ -322,7 +439,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
       }),
       merge: (persisted, current) => {
         const persistedState = persisted as Partial<ArchitectureState> | undefined;
-        const architecture = persistedState?.architecture ?? freshSampleArchitecture();
+        const architecture = normalizeArchitecture(persistedState?.architecture);
 
         return {
           ...current,

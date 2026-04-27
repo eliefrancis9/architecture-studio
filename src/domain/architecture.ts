@@ -16,6 +16,8 @@ export type CostModel = "payg" | "reserved" | "committed" | "license" | "unknown
 export type DependencyKind = "sync" | "async" | "data" | "control-plane" | "observability";
 export type DecisionStatus = "proposed" | "accepted" | "superseded";
 export type TradeoffSentiment = "improves" | "neutral" | "worsens";
+export type ConstraintType = "cost" | "compliance" | "latency" | "region" | "availability" | "security";
+export type ConstraintPriority = "low" | "medium" | "high";
 
 export interface CostProfile {
   model: CostModel;
@@ -73,12 +75,12 @@ export interface Dependency {
   description?: string;
 }
 
-export interface ArchitectureConstraint {
+export interface Constraint {
   id: string;
-  label: string;
-  category: "cost" | "security" | "resilience" | "delivery" | "compliance";
-  priority: "low" | "medium" | "high";
+  type: ConstraintType;
   description: string;
+  targetValue: string | number;
+  priority: ConstraintPriority;
 }
 
 export interface TradeoffDimension {
@@ -113,13 +115,15 @@ export interface ArchitectureDecision {
   linkedDependencyIds: string[];
   linkedNetworkIds: string[];
   linkedRiskIds: string[];
+  satisfiesConstraintIds?: string[];
+  violatesConstraintIds?: string[];
 }
 
 export interface ArchitectureScenario {
   id: string;
   name: string;
   intent: string;
-  constraints: ArchitectureConstraint[];
+  constraints: Constraint[];
   components: ArchitectureComponent[];
   networks: NetworkBoundary[];
   dependencies: Dependency[];
@@ -128,7 +132,7 @@ export interface ArchitectureScenario {
 }
 
 export interface ScenarioOverrides {
-  constraints?: ArchitectureConstraint[];
+  constraints?: Constraint[];
   components?: Record<string, Partial<ArchitectureComponent>>;
   componentAdditions?: ArchitectureComponent[];
   networks?: Record<string, Partial<NetworkBoundary>>;
@@ -153,6 +157,7 @@ export interface Architecture {
   name: string;
   description: string;
   customerContext: string;
+  constraints: Constraint[];
   baseScenario: ArchitectureScenario;
   variants: ArchitectureVariant[];
   activeScenarioId: string;
@@ -161,7 +166,13 @@ export interface Architecture {
 }
 
 export type RiskSignalSeverity = "info" | "warning" | "attention";
-export type RiskSignalCategory = "resilience" | "security" | "scalability" | "operability" | "cost";
+export type RiskSignalCategory =
+  | "resilience"
+  | "security"
+  | "scalability"
+  | "operability"
+  | "cost"
+  | "compliance";
 
 export interface RiskSignal {
   id: string;
@@ -172,4 +183,5 @@ export interface RiskSignal {
   explanation: string;
   tradeoff: string;
   componentIds: string[];
+  constraintIds?: string[];
 }

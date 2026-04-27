@@ -4,6 +4,9 @@ import type {
   ArchitectureDecision,
   AvailabilityPattern,
   Criticality,
+  Constraint,
+  ConstraintPriority,
+  ConstraintType,
   DecisionStatus,
   Exposure,
   Provider,
@@ -17,6 +20,8 @@ const availabilityOptions: AvailabilityPattern[] = ["single", "multi-zone", "mul
 const exposureOptions: Exposure[] = ["private", "internal", "public"];
 const criticalityOptions: Criticality[] = ["low", "medium", "high", "mission-critical"];
 const decisionStatuses: DecisionStatus[] = ["proposed", "accepted", "superseded"];
+const constraintTypes: ConstraintType[] = ["cost", "compliance", "latency", "region", "availability", "security"];
+const constraintPriorities: ConstraintPriority[] = ["low", "medium", "high"];
 
 const formatTradeoff = (dimension: TradeoffDimension) => {
   const prefix = dimension.delta > 0 ? "+" : "";
@@ -85,6 +90,10 @@ function DecisionCard({
         <strong>{selectedOption.title}</strong>
         <span>{selectedOption.description}</span>
       </div>
+      <div className="constraintLinks">
+        <small>Satisfies: {decision.satisfiesConstraintIds?.length ? decision.satisfiesConstraintIds.join(", ") : "none"}</small>
+        <small>Violates: {decision.violatesConstraintIds?.length ? decision.violatesConstraintIds.join(", ") : "none"}</small>
+      </div>
       <div className="tradeoffGrid">
         {Object.entries(selectedOption.tradeoffs).map(([dimension, tradeoff]) => (
           <div key={dimension} className={`tradeoff ${tradeoff.sentiment}`}>
@@ -98,10 +107,73 @@ function DecisionCard({
   );
 }
 
+function ConstraintCard({
+  constraint,
+  onUpdate,
+}: {
+  constraint: Constraint;
+  onUpdate: (constraintId: string, patch: Partial<Constraint>) => void;
+}) {
+  return (
+    <article className="constraintCard">
+      <div className="decisionHeader">
+        <strong>{constraint.description}</strong>
+        <span>{constraint.priority}</span>
+      </div>
+      <div className="constraintControls">
+        <Field label="Type">
+          <select
+            value={constraint.type}
+            onChange={(event) => onUpdate(constraint.id, { type: event.target.value as ConstraintType })}
+          >
+            {constraintTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Priority">
+          <select
+            value={constraint.priority}
+            onChange={(event) => onUpdate(constraint.id, { priority: event.target.value as ConstraintPriority })}
+          >
+            {constraintPriorities.map((priority) => (
+              <option key={priority} value={priority}>
+                {priority}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <Field label="Description">
+        <textarea
+          value={constraint.description}
+          rows={2}
+          onChange={(event) => onUpdate(constraint.id, { description: event.target.value })}
+        />
+      </Field>
+      <Field label="Target value">
+        <input
+          value={String(constraint.targetValue)}
+          onChange={(event) => {
+            const numericValue = Number(event.target.value);
+            onUpdate(constraint.id, {
+              targetValue: Number.isFinite(numericValue) && event.target.value.trim() !== "" ? numericValue : event.target.value,
+            });
+          }}
+        />
+      </Field>
+    </article>
+  );
+}
+
 export function InspectorPanel() {
   const scenario = useArchitectureStore((state) => state.activeScenario());
   const component = useArchitectureStore((state) => state.selectedComponent());
   const updateComponent = useArchitectureStore((state) => state.updateComponent);
+  const addConstraint = useArchitectureStore((state) => state.addConstraint);
+  const updateConstraint = useArchitectureStore((state) => state.updateConstraint);
   const updateDecision = useArchitectureStore((state) => state.updateDecision);
   const addDependency = useArchitectureStore((state) => state.addDependency);
   const signals = evaluateScenario(scenario);
@@ -112,12 +184,22 @@ export function InspectorPanel() {
     }
   };
 
-  const componentSignals = component
-    ? signals.filter((signal) => signal.componentIds.includes(component.id))
-    : signals.slice(0, 4);
   const visibleDecisions = component
     ? scenario.decisions.filter((decision) => decision.linkedComponentIds.includes(component.id))
     : scenario.decisions;
+  const visibleDecisionConstraintIds = new Set(
+    visibleDecisions.flatMap((decision) => [
+      ...(decision.satisfiesConstraintIds ?? []),
+      ...(decision.violatesConstraintIds ?? []),
+    ]),
+  );
+  const componentSignals = component
+    ? signals.filter(
+        (signal) =>
+          signal.componentIds.includes(component.id) ||
+          signal.constraintIds?.some((constraintId) => visibleDecisionConstraintIds.has(constraintId)),
+      )
+    : signals.slice(0, 5);
 
   return (
     <aside className="inspector panel">
@@ -287,6 +369,23 @@ export function InspectorPanel() {
         ) : (
           visibleDecisions.map((decision) => (
             <DecisionCard key={decision.id} decision={decision} onUpdate={updateDecision} />
+          ))
+        )}
+      </section>
+
+      <section className="constraints">
+        <div className="sectionTitle sectionTitleWithAction">
+          <div>
+            <Braces size={16} />
+            <h3>Constraints</h3>
+          </div>
+          <button onClick={addConstraint}>Add</button>
+        </div>
+        {scenario.constraints.length === 0 ? (
+          <p className="quiet">No constraints captured for this scenario.</p>
+        ) : (
+          scenario.constraints.map((constraint) => (
+            <ConstraintCard key={constraint.id} constraint={constraint} onUpdate={updateConstraint} />
           ))
         )}
       </section>

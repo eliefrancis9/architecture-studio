@@ -2,6 +2,7 @@ import type {
   Architecture,
   ArchitectureDecision,
   ArchitectureScenario,
+  Constraint,
   Dependency,
   NetworkBoundary,
   ScenarioOverrides,
@@ -34,9 +35,24 @@ function applyDecisionOverrides(
   ];
 }
 
+function mergeConstraints(...constraintSets: Array<Constraint[] | undefined>) {
+  const constraintsById = new Map<string, Constraint>();
+
+  constraintSets.forEach((constraintSet) => {
+    constraintSet?.forEach((constraint) => {
+      constraintsById.set(constraint.id, constraint);
+    });
+  });
+
+  return Array.from(constraintsById.values());
+}
+
 export function resolveScenario(architecture: Architecture, scenarioId: string): ArchitectureScenario {
   if (scenarioId === architecture.baseScenario.id) {
-    return architecture.baseScenario;
+    return {
+      ...architecture.baseScenario,
+      constraints: mergeConstraints(architecture.constraints, architecture.baseScenario.constraints),
+    };
   }
 
   const variant = architecture.variants.find((candidate) => candidate.id === scenarioId);
@@ -51,7 +67,7 @@ export function resolveScenario(architecture: Architecture, scenarioId: string):
     id: variant.id,
     name: variant.name,
     intent: variant.intent,
-    constraints: [...architecture.baseScenario.constraints, ...(overrides.constraints ?? [])],
+    constraints: mergeConstraints(architecture.constraints, architecture.baseScenario.constraints, overrides.constraints),
     components: applyOverrides(
       architecture.baseScenario.components,
       overrides.components,

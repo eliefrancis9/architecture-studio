@@ -3,7 +3,7 @@ import type { RiskSignalCategory } from "../domain/architecture";
 import { compareBaseToActive } from "../domain/scenarioComparison";
 import { useArchitectureStore } from "../state/architectureStore";
 
-const categories: RiskSignalCategory[] = ["resilience", "security", "scalability", "operability", "cost"];
+const categories: RiskSignalCategory[] = ["resilience", "security", "scalability", "operability", "cost", "compliance"];
 
 const formatDelta = (delta: number, prefix = "") => {
   if (delta === 0) return `${prefix}0`;
@@ -101,6 +101,23 @@ export function ScenarioComparisonPanel() {
               </small>
             ))
           )}
+        </div>
+
+        <div className="comparisonList">
+          <span>Constraints</span>
+          <small>
+            {comparison.constraintSatisfaction.activeSatisfied} satisfied ({formatDelta(
+              comparison.constraintSatisfaction.delta,
+            )} vs base)
+          </small>
+          {Object.entries(comparison.constraintSatisfaction.byType)
+            .filter(([, counts]) => counts.active > 0 || counts.base > 0 || counts.delta !== 0)
+            .slice(0, 3)
+            .map(([type, counts]) => (
+              <small key={type}>
+                {type}: {counts.active} ({formatDelta(counts.delta)})
+              </small>
+            ))}
         </div>
       </div>
 

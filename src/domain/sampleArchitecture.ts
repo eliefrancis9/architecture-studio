@@ -64,6 +64,8 @@ const checkoutResilienceDecision: ArchitectureDecision = {
   linkedDependencyIds: ["dependency-api-db"],
   linkedNetworkIds: ["network-edge"],
   linkedRiskIds: ["resilience-component-api"],
+  satisfiesConstraintIds: ["constraint-monthly-cost", "constraint-required-region"],
+  violatesConstraintIds: ["constraint-availability", "constraint-checkout-rto"],
   options: [
     {
       id: "option-single-region",
@@ -85,6 +87,22 @@ export const sampleArchitecture: Architecture = {
   name: "Retail Platform Modernization",
   description: "Scenario-backed architecture model for a customer-facing commerce platform.",
   customerContext: "High-traffic retail workload with resilience, compliance, and cost visibility needs.",
+  constraints: [
+    {
+      id: "constraint-monthly-cost",
+      type: "cost",
+      priority: "high",
+      description: "Keep the modeled platform run-rate below the migration business case threshold.",
+      targetValue: 9000,
+    },
+    {
+      id: "constraint-required-region",
+      type: "region",
+      priority: "medium",
+      description: "Primary customer-facing services must run in the approved US East region.",
+      targetValue: "us-east-1",
+    },
+  ],
   activeScenarioId: "base",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -95,10 +113,17 @@ export const sampleArchitecture: Architecture = {
     constraints: [
       {
         id: "constraint-availability",
-        label: "Checkout availability",
-        category: "resilience",
+        type: "availability",
         priority: "high",
         description: "Checkout must remain available during a zonal infrastructure issue.",
+        targetValue: "multi-zone",
+      },
+      {
+        id: "constraint-checkout-rto",
+        type: "availability",
+        priority: "high",
+        description: "Checkout recovery objective should be one hour or better.",
+        targetValue: 1,
       },
     ],
     networks: [
@@ -224,6 +249,8 @@ export const sampleArchitecture: Architecture = {
           "decision-checkout-resilience": {
             selectedOptionId: "option-multi-region",
             status: "accepted",
+            satisfiesConstraintIds: ["constraint-availability", "constraint-checkout-rto"],
+            violatesConstraintIds: [],
           },
         },
       },

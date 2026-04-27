@@ -3,10 +3,11 @@ import type {
   ArchitectureComponent,
   ArchitectureDecision,
   ArchitectureScenario,
+  ConstraintType,
   RiskSignalCategory,
   TradeoffProfile,
 } from "./architecture";
-import { evaluateScenario } from "../reasoning/signals";
+import { evaluateConstraints, evaluateScenario } from "../reasoning/signals";
 import { resolveScenario } from "./scenarioResolver";
 
 export interface ChangedEntity {
@@ -27,6 +28,12 @@ export interface ScenarioComparison {
   signalCountByCategory: Record<RiskSignalCategory, { base: number; active: number; delta: number }>;
   changedComponents: ChangedEntity[];
   changedDecisions: ChangedEntity[];
+  constraintSatisfaction: {
+    baseSatisfied: number;
+    activeSatisfied: number;
+    delta: number;
+    byType: Record<ConstraintType, { base: number; active: number; delta: number }>;
+  };
   keyTradeoffDeltas: Array<{
     decisionId: string;
     decisionTitle: string;
@@ -36,7 +43,15 @@ export interface ScenarioComparison {
   }>;
 }
 
-const signalCategories: RiskSignalCategory[] = ["resilience", "security", "scalability", "operability", "cost"];
+const signalCategories: RiskSignalCategory[] = [
+  "resilience",
+  "security",
+  "scalability",
+  "operability",
+  "cost",
+  "compliance",
+];
+const constraintTypes: ConstraintType[] = ["cost", "compliance", "latency", "region", "availability", "security"];
 
 function totalMonthlyCost(scenario: ArchitectureScenario) {
   return scenario.components.reduce((sum, component) => sum + component.costProfile.monthlyEstimate, 0);
@@ -49,6 +64,7 @@ function countSignals(scenario: ArchitectureScenario) {
     scalability: 0,
     operability: 0,
     cost: 0,
+    compliance: 0,
   };
 
   evaluateScenario(scenario).forEach((signal) => {
@@ -56,6 +72,38 @@ function countSignals(scenario: ArchitectureScenario) {
   });
 
   return counts;
+}
+
+function constraintSatisfaction(base: ArchitectureScenario, active: ArchitectureScenario) {
+  const baseEvaluations = evaluateConstraints(base);
+  const activeEvaluations = evaluateConstraints(active);
+  const countSatisfied = (type: ConstraintType, scenario: "base" | "active") => {
+    const evaluations = scenario === "base" ? baseEvaluations : activeEvaluations;
+    return evaluations.filter((evaluation) => evaluation.constraint.type === type && evaluation.satisfied).length;
+  };
+  const baseSatisfied = baseEvaluations.filter((evaluation) => evaluation.satisfied).length;
+  const activeSatisfied = activeEvaluations.filter((evaluation) => evaluation.satisfied).length;
+
+  return {
+    baseSatisfied,
+    activeSatisfied,
+    delta: activeSatisfied - baseSatisfied,
+    byType: constraintTypes.reduce(
+      (summary, type) => {
+        const baseCount = countSatisfied(type, "base");
+        const activeCount = countSatisfied(type, "active");
+        return {
+          ...summary,
+          [type]: {
+            base: baseCount,
+            active: activeCount,
+            delta: activeCount - baseCount,
+          },
+        };
+      },
+      {} as ScenarioComparison["constraintSatisfaction"]["byType"],
+    ),
+  };
 }
 
 function changedComponents(base: ArchitectureComponent[], active: ArchitectureComponent[]): ChangedEntity[] {
@@ -142,6 +190,7 @@ export function compareBaseToActive(architecture: Architecture): ScenarioCompari
   const activeCost = totalMonthlyCost(active);
   const baseSignals = countSignals(base);
   const activeSignals = countSignals(active);
+  const constraints = constraintSatisfaction(base, active);
 
   return {
     base,
@@ -165,6 +214,7 @@ export function compareBaseToActive(architecture: Architecture): ScenarioCompari
     ),
     changedComponents: changedComponents(base.components, active.components),
     changedDecisions: changedDecisions(base.decisions, active.decisions),
+    constraintSatisfaction: constraints,
     keyTradeoffDeltas: keyTradeoffDeltas(base.decisions, active.decisions),
   };
 }
