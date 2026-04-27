@@ -10,7 +10,7 @@ import type {
   Dependency,
   ScenarioOverrides,
 } from "../domain/architecture";
-import { sampleArchitecture } from "../domain/sampleArchitecture";
+import { blankArchitecture } from "../domain/blankArchitecture";
 import { resolveScenario } from "../domain/scenarioResolver";
 
 type ComponentPatch = Partial<Omit<ArchitectureComponent, "id" | "position">> & {
@@ -25,6 +25,7 @@ interface ArchitectureState {
   setActiveScenario: (scenarioId: string) => void;
   selectComponent: (componentId?: string) => void;
   addComponent: (type: ComponentType, position: ArchitectureComponent["position"]) => void;
+  removeComponent: (componentId: string) => void;
   updateComponent: (componentId: string, patch: ComponentPatch) => void;
   addConstraint: () => void;
   updateConstraint: (constraintId: string, patch: Partial<Constraint>) => void;
@@ -46,21 +47,21 @@ const componentDefaults: Record<ComponentType, Pick<ArchitectureComponent, "name
 };
 
 const now = () => new Date().toISOString();
-const storageName = "architecture-studio-v1";
-const freshSampleArchitecture = () => structuredClone(sampleArchitecture);
+const storageName = "architecture-studio-v2-blank";
+const freshBlankArchitecture = () => structuredClone(blankArchitecture);
 
 function normalizeArchitecture(architecture?: Partial<Architecture>): Architecture {
-  const sample = freshSampleArchitecture();
+  const blank = freshBlankArchitecture();
   if (!architecture?.baseScenario) {
-    return sample;
+    return blank;
   }
 
   return {
-    ...sample,
+    ...blank,
     ...architecture,
-    constraints: architecture.constraints ?? sample.constraints,
+    constraints: architecture.constraints ?? blank.constraints,
     baseScenario: {
-      ...sample.baseScenario,
+      ...blank.baseScenario,
       ...architecture.baseScenario,
       constraints: architecture.baseScenario.constraints?.map((constraint) => {
         if ("type" in constraint && "targetValue" in constraint) {
@@ -82,9 +83,9 @@ function normalizeArchitecture(architecture?: Partial<Architecture>): Architectu
           targetValue: legacy.category === "resilience" ? "multi-zone" : "explicit-security-layer",
           priority: legacy.priority ?? "medium",
         };
-      }) ?? sample.baseScenario.constraints,
+      }) ?? blank.baseScenario.constraints,
     },
-    variants: architecture.variants ?? sample.variants,
+    variants: architecture.variants ?? blank.variants,
   };
 }
 
@@ -155,11 +156,39 @@ function upsertConstraint(constraints: Constraint[] | undefined, updatedConstrai
     : [...existing, updatedConstraint];
 }
 
+function cleanScenarioAfterComponentRemoval(scenario: ArchitectureScenario, componentId: string): ArchitectureScenario {
+  const removedDependencyIds = new Set(
+    scenario.dependencies
+      .filter((dependency) => dependency.fromComponentId === componentId || dependency.toComponentId === componentId)
+      .map((dependency) => dependency.id),
+  );
+
+  return {
+    ...scenario,
+    components: scenario.components
+      .filter((component) => component.id !== componentId)
+      .map((component) => ({
+        ...component,
+        dependencies: component.dependencies.filter((dependencyId) => dependencyId !== componentId),
+      })),
+    dependencies: scenario.dependencies.filter((dependency) => !removedDependencyIds.has(dependency.id)),
+    decisions: scenario.decisions.map((decision) => ({
+      ...decision,
+      linkedComponentIds: decision.linkedComponentIds.filter((linkedComponentId) => linkedComponentId !== componentId),
+      linkedDependencyIds: decision.linkedDependencyIds.filter((linkedDependencyId) => !removedDependencyIds.has(linkedDependencyId)),
+    })),
+  };
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values));
+}
+
 export const useArchitectureStore = create<ArchitectureState>()(
   persist(
     (set, get) => ({
-      architecture: freshSampleArchitecture(),
-      selectedComponentId: "component-api",
+      architecture: freshBlankArchitecture(),
+      selectedComponentId: undefined,
       activeScenario: () => {
         const { architecture } = get();
         return resolveScenario(architecture, architecture.activeScenarioId);
@@ -219,6 +248,52 @@ export const useArchitectureStore = create<ArchitectureState>()(
               }),
             ),
             selectedComponentId: id,
+          };
+        }),
+      removeComponent: (componentId) =>
+        set((state) => {
+          const resolved = resolveScenario(state.architecture, state.architecture.activeScenarioId);
+          const dependencyIdsToRemove = resolved.dependencies
+            .filter((dependency) => dependency.fromComponentId === componentId || dependency.toComponentId === componentId)
+            .map((dependency) => dependency.id);
+
+          return {
+            architecture: updateActiveScenario(
+              state.architecture,
+              (scenario) => cleanScenarioAfterComponentRemoval(scenario, componentId),
+              (overrides, variantScenario) => {
+                const cleanedScenario = cleanScenarioAfterComponentRemoval(variantScenario, componentId);
+                const removedDependencyIds = new Set(dependencyIdsToRemove);
+
+                return {
+                  ...overrides,
+                  componentAdditions: overrides.componentAdditions?.filter((component) => component.id !== componentId),
+                  componentRemovals: uniqueStrings([...(overrides.componentRemovals ?? []), componentId]),
+                  components: Object.fromEntries(
+                    Object.entries(overrides.components ?? {}).filter(([id]) => id !== componentId),
+                  ),
+                  dependencyAdditions: overrides.dependencyAdditions?.filter(
+                    (dependency) =>
+                      dependency.fromComponentId !== componentId && dependency.toComponentId !== componentId,
+                  ),
+                  dependencyRemovals: uniqueStrings([
+                    ...(overrides.dependencyRemovals ?? []),
+                    ...dependencyIdsToRemove,
+                  ]),
+                  dependencies: Object.fromEntries(
+                    Object.entries(overrides.dependencies ?? {}).filter(([id]) => !removedDependencyIds.has(id)),
+                  ),
+                  decisions: cleanedScenario.decisions.reduce<Record<string, Partial<ArchitectureDecision>>>(
+                    (decisions, decision) => ({
+                      ...decisions,
+                      [decision.id]: decision,
+                    }),
+                    overrides.decisions ?? {},
+                  ),
+                };
+              },
+            ),
+            selectedComponentId: state.selectedComponentId === componentId ? undefined : state.selectedComponentId,
           };
         }),
       updateComponent: (componentId, patch) =>
@@ -426,8 +501,8 @@ export const useArchitectureStore = create<ArchitectureState>()(
       resetDemoData: () => {
         localStorage.removeItem(storageName);
         set({
-          architecture: freshSampleArchitecture(),
-          selectedComponentId: "component-api",
+          architecture: freshBlankArchitecture(),
+          selectedComponentId: undefined,
         });
       },
     }),

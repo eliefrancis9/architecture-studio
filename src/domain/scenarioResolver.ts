@@ -20,6 +20,17 @@ function applyOverrides<T extends EntityWithId>(baseItems: T[], overrides?: Reco
   ];
 }
 
+function applyOverridesWithRemovals<T extends EntityWithId>(
+  baseItems: T[],
+  overrides?: Record<string, Partial<T>>,
+  additions: T[] = [],
+  removals: string[] = [],
+) {
+  const removedIds = new Set(removals);
+
+  return applyOverrides(baseItems, overrides, additions).filter((item) => !removedIds.has(item.id));
+}
+
 function applyDecisionOverrides(
   baseItems: ArchitectureDecision[],
   overrides?: Record<string, Partial<ArchitectureDecision>>,
@@ -68,20 +79,22 @@ export function resolveScenario(architecture: Architecture, scenarioId: string):
     name: variant.name,
     intent: variant.intent,
     constraints: mergeConstraints(architecture.constraints, architecture.baseScenario.constraints, overrides.constraints),
-    components: applyOverrides(
+    components: applyOverridesWithRemovals(
       architecture.baseScenario.components,
       overrides.components,
       overrides.componentAdditions ?? [],
+      overrides.componentRemovals ?? [],
     ),
     networks: applyOverrides<NetworkBoundary>(
       architecture.baseScenario.networks,
       overrides.networks,
       overrides.networkAdditions ?? [],
     ),
-    dependencies: applyOverrides<Dependency>(
+    dependencies: applyOverridesWithRemovals<Dependency>(
       architecture.baseScenario.dependencies,
       overrides.dependencies,
       overrides.dependencyAdditions ?? [],
+      overrides.dependencyRemovals ?? [],
     ),
     decisions: applyDecisionOverrides(
       architecture.baseScenario.decisions,

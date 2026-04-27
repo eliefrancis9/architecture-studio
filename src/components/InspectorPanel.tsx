@@ -1,4 +1,4 @@
-import { Braces, GitCompareArrows, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { Braces, GitCompareArrows, SlidersHorizontal, Trash2, TriangleAlert } from "lucide-react";
 import { useMemo } from "react";
 import type {
   ArchitectureComponent,
@@ -226,6 +226,7 @@ export function InspectorPanel() {
   const architecture = useArchitectureStore((state) => state.architecture);
   const selectedComponentId = useArchitectureStore((state) => state.selectedComponentId);
   const updateComponent = useArchitectureStore((state) => state.updateComponent);
+  const removeComponent = useArchitectureStore((state) => state.removeComponent);
   const addConstraint = useArchitectureStore((state) => state.addConstraint);
   const updateConstraint = useArchitectureStore((state) => state.updateConstraint);
   const updateDecision = useArchitectureStore((state) => state.updateDecision);
@@ -305,6 +306,13 @@ export function InspectorPanel() {
 
       {component ? (
         <div className="formStack">
+          <div className="componentActions">
+            <span>{component.type}</span>
+            <button onClick={() => removeComponent(component.id)}>
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
           <Field label="Name">
             <input value={component.name} onChange={(event) => update("name", event.target.value)} />
           </Field>

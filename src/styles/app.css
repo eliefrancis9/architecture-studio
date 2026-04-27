@@ -241,6 +241,38 @@ p {
   padding: 12px;
 }
 
+.componentActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.componentActions span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.componentActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid #f3c4bd;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #a64038;
+  background: #fff5f3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .paletteItem {
   width: 100%;
   display: flex;

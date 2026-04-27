@@ -32,9 +32,9 @@ export function ScenarioSelector() {
             </button>
           ))}
         </div>
-        <button className="resetButton" onClick={resetDemoData} title="Reset demo data">
+        <button className="resetButton" onClick={resetDemoData} title="Clear workspace and start blank">
           <RotateCcw size={15} />
-          Reset Demo Data
+          Start Blank
         </button>
         <ExportSummaryPanel />
       </div>

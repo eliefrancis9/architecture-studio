@@ -142,10 +142,12 @@ export interface ScenarioOverrides {
   constraints?: Constraint[];
   components?: Record<string, Partial<ArchitectureComponent>>;
   componentAdditions?: ArchitectureComponent[];
+  componentRemovals?: string[];
   networks?: Record<string, Partial<NetworkBoundary>>;
   networkAdditions?: NetworkBoundary[];
   dependencies?: Record<string, Partial<Dependency>>;
   dependencyAdditions?: Dependency[];
+  dependencyRemovals?: string[];
   decisions?: Record<string, Partial<ArchitectureDecision>>;
   decisionAdditions?: ArchitectureDecision[];
   riskAdditions?: RiskSignal[];
