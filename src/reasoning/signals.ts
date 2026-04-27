@@ -46,6 +46,7 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
     if (constraint.type === "cost") {
       const actualValue = totalMonthlyCost(scenario);
       const targetValue = Number(constraint.targetValue);
+      const highestCost = highestCostComponent(scenario);
 
       return {
         constraint,
@@ -55,15 +56,15 @@ export function evaluateConstraints(scenario: ArchitectureScenario): ConstraintE
         suggestedActions:
           actualValue > targetValue
             ? [
-                highestCostComponent(scenario)
+                highestCost
                   ? {
-                      description: `${highestCostComponent(scenario).name} can move to reserved pricing and a lower modeled monthly estimate.`,
-                      targetComponentId: highestCostComponent(scenario).id,
+                      description: `${highestCost.name} can move to reserved pricing and a lower modeled monthly estimate.`,
+                      targetComponentId: highestCost.id,
                       patch: {
                         costProfile: {
-                          ...highestCostComponent(scenario).costProfile,
+                          ...highestCost.costProfile,
                           model: "reserved",
-                          monthlyEstimate: Math.round(highestCostComponent(scenario).costProfile.monthlyEstimate * 0.8),
+                          monthlyEstimate: Math.round(highestCost.costProfile.monthlyEstimate * 0.8),
                         },
                       },
                     }

@@ -31,6 +31,40 @@ const formatTradeoff = (dimension: TradeoffDimension) => {
   return `${dimension.sentiment} (${prefix}${dimension.delta} ${dimension.unit})`;
 };
 
+const componentPatchKeys: Array<keyof ArchitectureComponent> = [
+  "availability",
+  "costProfile",
+  "criticality",
+  "dependencies",
+  "exposure",
+  "name",
+  "networkId",
+  "operability",
+  "position",
+  "provider",
+  "region",
+  "role",
+  "tags",
+  "type",
+];
+const decisionPatchKeys: Array<keyof ArchitectureDecision> = [
+  "context",
+  "linkedComponentIds",
+  "linkedDependencyIds",
+  "linkedNetworkIds",
+  "linkedRiskIds",
+  "options",
+  "satisfiesConstraintIds",
+  "selectedOptionId",
+  "status",
+  "title",
+  "violatesConstraintIds",
+];
+
+function patchHasOnlyKeys<T extends object>(patch: object, keys: Array<keyof T>) {
+  return Object.keys(patch).every((key) => keys.includes(key as keyof T));
+}
+
 function Field({
   label,
   children,
@@ -221,11 +255,11 @@ export function InspectorPanel() {
       return;
     }
 
-    if (suggestion.targetComponentId) {
+    if (suggestion.targetComponentId && patchHasOnlyKeys<ArchitectureComponent>(suggestion.patch, componentPatchKeys)) {
       updateComponent(suggestion.targetComponentId, suggestion.patch as Partial<ArchitectureComponent>);
     }
 
-    if (suggestion.targetDecisionId) {
+    if (suggestion.targetDecisionId && patchHasOnlyKeys<ArchitectureDecision>(suggestion.patch, decisionPatchKeys)) {
       updateDecision(suggestion.targetDecisionId, suggestion.patch as Partial<ArchitectureDecision>);
     }
   };
