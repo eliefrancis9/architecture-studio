@@ -137,6 +137,55 @@ describe("evaluateConstraints suggested actions", () => {
     });
   });
 
+  it("creates a cost patch for the highest-cost component", () => {
+    const [evaluation] = evaluateConstraints(
+      scenario({
+        constraints: [
+          {
+            id: "constraint-cost",
+            type: "cost",
+            description: "Keep monthly cost under target",
+            targetValue: 1000,
+            priority: "high",
+          },
+        ],
+      }),
+    );
+
+    expect(evaluation.satisfied).toBe(false);
+    expect(evaluation.suggestedActions[0]).toMatchObject({
+      targetComponentId: "component-api",
+      patch: {
+        costProfile: {
+          model: "reserved",
+          monthlyEstimate: 1920,
+        },
+      },
+    });
+  });
+
+  it("creates a security exposure patch for public components without a security layer", () => {
+    const [evaluation] = evaluateConstraints(
+      scenario({
+        constraints: [
+          {
+            id: "constraint-security",
+            type: "security",
+            description: "Public surfaces require explicit security layer",
+            targetValue: "security layer",
+            priority: "high",
+          },
+        ],
+      }),
+    );
+
+    expect(evaluation.satisfied).toBe(false);
+    expect(evaluation.suggestedActions[1]).toMatchObject({
+      targetComponentId: "component-api",
+      patch: { exposure: "internal" },
+    });
+  });
+
   it("returns no suggested actions for satisfied constraints", () => {
     const [evaluation] = evaluateConstraints(
       scenario({

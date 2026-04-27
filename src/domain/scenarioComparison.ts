@@ -184,7 +184,7 @@ function keyTradeoffDeltas(base: ArchitectureDecision[], active: ArchitectureDec
 }
 
 export function compareBaseToActive(architecture: Architecture): ScenarioComparison {
-  const base = architecture.baseScenario;
+  const base = resolveScenario(architecture, architecture.baseScenario.id);
   const active = resolveScenario(architecture, architecture.activeScenarioId);
   const baseCost = totalMonthlyCost(base);
   const activeCost = totalMonthlyCost(active);
